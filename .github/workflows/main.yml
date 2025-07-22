@@ -17,11 +17,7 @@ jobs:
           echo "GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}"
           echo "GCP_ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}"
           echo "IMAGE: $IMAGE"
-          if [[ -z "${{ secrets.GCP_DOCKER_KEY }}" ]]; then
-            echo "GCP_DOCKER_KEY is MISSING"
-          else
-            echo "GCP_DOCKER_KEY is set"
-          fi
+          echo "Proceeding with authentication..."
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
