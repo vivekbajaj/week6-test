@@ -17,10 +17,10 @@ jobs:
           echo "GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}"
           echo "GCP_ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}"
           echo "IMAGE: $IMAGE"
-          if [[ -n "${{ secrets.GCP_DOCKER_KEY }}" ]]; then
-            echo "GCP_DOCKER_KEY is set"
-          else
+          if [[ -z "${{ secrets.GCP_DOCKER_KEY }}" ]]; then
             echo "GCP_DOCKER_KEY is MISSING"
+          else
+            echo "GCP_DOCKER_KEY is set"
           fi
 
       - name: Authenticate with Google Cloud
