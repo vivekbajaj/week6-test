@@ -16,18 +16,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Validate required variables
-        run: |
-          [[ -z "${{ secrets.GCP_PROJECT_ID }}" ]] && echo "GCP_PROJECT_ID not set" && exit 1
-          [[ -z "${{ secrets.GCP_ARTIFACT_REPO }}" ]] && echo "GCP_ARTIFACT_REPO not set" && exit 1
-          [[ -z "${{ secrets.GKE_CLUSTER_NAME }}" ]] && echo "GKE_CLUSTER_NAME not set" && exit 1
-          [[ -z "${{ secrets.GKE_ZONE }}" ]] && echo "GKE_ZONE not set" && exit 1
-
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
 
       - name: Configure docker for Artifact Registry
         run: |
@@ -100,6 +93,7 @@ jobs:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cml comment create report.md
+
 
 
 
