@@ -16,6 +16,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Validate required variables
+        run: |
+          [[ -z "${{ secrets.GCP_PROJECT_ID }}" ]] && echo "GCP_PROJECT_ID not set" && exit 1
+          [[ -z "${{ secrets.GCP_ARTIFACT_REPO }}" ]] && echo "GCP_ARTIFACT_REPO not set" && exit 1
+          [[ -z "${{ secrets.GKE_CLUSTER_NAME }}" ]] && echo "GKE_CLUSTER_NAME not set" && exit 1
+          [[ -z "${{ secrets.GKE_ZONE }}" ]] && echo "GKE_ZONE not set" && exit 1
+
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v2
         with:
@@ -67,7 +74,7 @@ jobs:
 
       - name: Wait for service and test model endpoint
         run: |
-          export EXTERNAL_IP="${{ needs.build-push-deploy.outputs.EXTERNAL_IP }}"
+          EXTERNAL_IP="${{ needs.build-push-deploy.outputs.EXTERNAL_IP }}"
           for i in {1..10}; do
             if [[ -z "$EXTERNAL_IP" ]]; then
               EXTERNAL_IP=$(kubectl get svc demo-iris-workload-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
@@ -93,6 +100,7 @@ jobs:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cml comment create report.md
+
 
 
 
