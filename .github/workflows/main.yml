@@ -1,100 +1,51 @@
-name: Build, Push, Deploy & CML Report
+name: GCP Artifact Registry Push Debug
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 env:
   IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/iris-api:latest
 
 jobs:
-  build-push-deploy:
+  build-push-debug:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud
+      - uses: actions/checkout@v4
+
+      - name: "Debug: Print environment and image tag"
+        run: |
+          echo "GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}"
+          echo "GCP_ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}"
+          echo "IMAGE: $IMAGE"
+          if [[ -n "${{ secrets.GCP_DOCKER_KEY }}" ]]; then
+            echo "GCP_DOCKER_KEY is set"
+          else
+            echo "GCP_DOCKER_KEY is MISSING"
+          fi
+
+      - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_DOCKER_KEY }}'
-      - name: Set up Google Cloud 
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}       
+          credentials_json: ${{ secrets.GCP_DOCKER_KEY }}
 
-      - name: Configure docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-      - name: Build and Push Docker image
-        run: |
-          docker build -t $IMAGE .
-          docker push $IMAGE
+      - name: "Debug: Show Docker config"
+        run: cat ~/.docker/config.json || echo "No docker config found"
 
-      - name: Get GKE credentials
-        run: |
-          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --zone ${{ secrets.GKE_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }}
+      - name: Build Docker image
+        run: docker build -t $IMAGE .
 
-      - name: Deploy to GKE
-        run: |
-          kubectl apply -f deployment.yaml
-          kubectl apply -f service.yaml
+      - name: List local Docker images
+        run: docker images
 
-      - name: Wait for rollout to finish
-        run: |
-          kubectl rollout status deployment/demo-iris-workload --timeout=180s
+      - name: Push Docker image to Artifact Registry
+        run: docker push $IMAGE
 
-      - name: Get service external IP
-        id: gke-ip
-        run: |
-          EXTERNAL_IP=""
-          for i in {1..30}; do
-            EXTERNAL_IP=$(kubectl get svc demo-iris-workload-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-            if [[ ! -z "$EXTERNAL_IP" ]]; then break; fi
-            sleep 10
-          done
-          echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_OUTPUT
 
-  cml-report:
-    needs: build-push-deploy
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
 
-      - uses: iterative/setup-cml@v2
-
-      - name: Wait for service and test model endpoint
-        run: |
-          EXTERNAL_IP="${{ needs.build-push-deploy.outputs.EXTERNAL_IP }}"
-          for i in {1..10}; do
-            if [[ -z "$EXTERNAL_IP" ]]; then
-              EXTERNAL_IP=$(kubectl get svc demo-iris-workload-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-              if [[ ! -z "$EXTERNAL_IP" ]]; then break; fi
-              sleep 10
-            fi
-          done
-
-          echo "## Iris Model Live Prediction Test" > report.md
-          echo "\n**Test input:**" >> report.md
-          echo "\`\`\`json" >> report.md
-          echo '{"sepal_length":5.1,"sepal_width":3.5,"petal_length":1.4,"petal_width":0.2}' >> report.md
-          echo "\`\`\`" >> report.md
-          echo "\n**API Output:**" >> report.md
-          echo "\`\`\`json" >> report.md
-          curl -s -X POST "http://$EXTERNAL_IP/predict/" \
-            -H "Content-Type: application/json" \
-            -d '{"sepal_length":5.1,"sepal_width":3.5,"petal_length":1.4,"petal_width":0.2}' >> report.md
-          echo "\n\`\`\`" >> report.md
-
-      - name: Comment CML report
-        env:
-          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cml comment create report.md
 
 
 
