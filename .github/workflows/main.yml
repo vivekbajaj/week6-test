@@ -35,6 +35,11 @@ jobs:
 
       - name: List local Docker images
         run: docker images
+      - name: Re-authenticate Docker
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          echo "Registry URI: us-central1-docker.pkg.dev/my-project-052025/my-repo"
+          echo "IMAGE variable: $IMAGE"
 
       - name: Push Docker image to Artifact Registry
         run: docker push $IMAGE
