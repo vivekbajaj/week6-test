@@ -154,7 +154,17 @@ jobs:
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cml comment create report.md
+          # Try to create comment first
+          if ! cml comment create report.md; then
+            echo "Failed to create comment, trying pull request comment..."
+            # Alternative: try to create as PR comment if this is a PR
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              cml comment create report.md --pr
+            else
+              echo "Creating report as job summary instead..."
+              cat report.md >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
 
 
 
